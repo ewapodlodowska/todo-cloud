@@ -1,3 +1,8 @@
+const SUPABASE_URL = "https://xijenfukrraduprwroam.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpamVuZnVrcnJhZHVwcndyb2FtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzU4OTQsImV4cCI6MjA5NjE1MTg5NH0.ZBHU56reQAhhts8Zco2B8ddthhbn9WkL2RbOJ6hTeIk";
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const authSection = document.getElementById("authSection");
 const dashboardSection = document.getElementById("dashboardSection");
 
@@ -8,6 +13,7 @@ const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
+const authMessage = document.getElementById("authMessage");
 const userEmail = document.getElementById("userEmail");
 
 const taskInput = document.getElementById("taskInput");
@@ -19,30 +25,27 @@ const fileInput = document.getElementById("fileInput");
 const uploadBtn = document.getElementById("uploadBtn");
 const fileInfo = document.getElementById("fileInfo");
 
-let tasks = [];
+let currentUser = null;
+let currentTasks = [];
 
-function showDashboard(email) {
-  authSection.classList.add("hidden");
-  dashboardSection.classList.remove("hidden");
-  userEmail.textContent = email;
-
-  tasks = [
-    { title: "Przygotować dokument", done: false },
-    { title: "Sprawdzić Supabase", done: true },
-    { title: "Wysłać projekt", done: false }
-  ];
-
-  renderTasks();
+function setMessage(text, type = "info") {
+  authMessage.textContent = text;
+  authMessage.className = `hint ${type}`;
 }
 
-function showAuth() {
-  dashboardSection.classList.add("hidden");
-  authSection.classList.remove("hidden");
+function isValidEmail(email) {
+  const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return pattern.test(email);
+}
 
-  emailInput.value = "";
-  passwordInput.value = "";
-  tasks = [];
-  renderTasks();
+function isStrongPassword(password) {
+  const minLength = password.length >= 8;
+  const hasUppercase = /[A-ZĄĆĘŁŃÓŚŹŻ]/.test(password);
+  const hasLowercase = /[a-ząćęłńóśźż]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
+
+  return minLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 }
 
 function validateAuthForm() {
@@ -50,59 +53,149 @@ function validateAuthForm() {
   const password = passwordInput.value.trim();
 
   if (!email || !password) {
-    alert("Wpisz e-mail i hasło.");
+    setMessage("Wpisz e-mail i hasło.", "error");
     return null;
   }
 
-  if (password.length < 6) {
-    alert("Hasło powinno mieć co najmniej 6 znaków.");
+  if (!isValidEmail(email)) {
+    setMessage("Wpisz poprawny adres e-mail, np. test@test.pl.", "error");
     return null;
   }
 
-  return email;
+  if (!isStrongPassword(password)) {
+    setMessage(
+      "Hasło jest zbyt słabe. Powinno mieć minimum 8 znaków, małą literę, wielką literę, cyfrę i znak specjalny.",
+      "error"
+    );
+    return null;
+  }
+
+  return { email, password };
 }
 
-loginBtn.addEventListener("click", () => {
-  const email = validateAuthForm();
+async function showDashboard(user) {
+  currentUser = user;
 
-  if (!email) return;
+  authSection.classList.add("hidden");
+  dashboardSection.classList.remove("hidden");
 
-  showDashboard(email);
+  userEmail.textContent = user.email;
+
+  emailInput.value = "";
+  passwordInput.value = "";
+  setMessage("");
+
+  await loadTasks();
+}
+
+function showAuth() {
+  currentUser = null;
+  currentTasks = [];
+
+  dashboardSection.classList.add("hidden");
+  authSection.classList.remove("hidden");
+
+  taskList.innerHTML = "";
+  taskCounter.textContent = "0 zadań";
+  fileInfo.textContent = "";
+}
+
+registerBtn.addEventListener("click", async () => {
+  const form = validateAuthForm();
+  if (!form) return;
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: form.email,
+    password: form.password
+  });
+
+  if (error) {
+    setMessage("Błąd rejestracji: " + error.message, "error");
+    return;
+  }
+
+  setMessage(
+    "Konto zostało zarejestrowane. Teraz możesz się zalogować tym samym adresem e-mail i hasłem.",
+    "success"
+  );
+
+  passwordInput.value = "";
 });
 
-registerBtn.addEventListener("click", () => {
-  const email = validateAuthForm();
+loginBtn.addEventListener("click", async () => {
+  const form = validateAuthForm();
+  if (!form) return;
 
-  if (!email) return;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: form.email,
+    password: form.password
+  });
 
-  alert("Konto demonstracyjne zostało utworzone.");
-  showDashboard(email);
+  if (error) {
+    setMessage(
+      "Nie udało się zalogować. Najpierw zarejestruj konto albo sprawdź e-mail i hasło.",
+      "error"
+    );
+    return;
+  }
+
+  await showDashboard(data.user);
 });
 
-logoutBtn.addEventListener("click", () => {
+logoutBtn.addEventListener("click", async () => {
+  await supabaseClient.auth.signOut();
   showAuth();
 });
+
+async function checkExistingSession() {
+  const { data } = await supabaseClient.auth.getSession();
+
+  if (data.session && data.session.user) {
+    await showDashboard(data.session.user);
+  } else {
+    showAuth();
+  }
+}
+
+async function loadTasks() {
+  if (!currentUser) return;
+
+  const { data, error } = await supabaseClient
+    .from("tasks")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    alert("Błąd pobierania zadań: " + error.message);
+    return;
+  }
+
+  currentTasks = data || [];
+  renderTasks();
+}
 
 function renderTasks() {
   taskList.innerHTML = "";
 
-  if (tasks.length === 0) {
+  if (currentTasks.length === 0) {
     taskList.innerHTML = `
       <li class="empty-state">
         Nie masz jeszcze żadnych zadań. Dodaj pierwsze zadanie powyżej.
       </li>
     `;
   } else {
-    tasks.forEach((task, index) => {
+    currentTasks.forEach((task) => {
       const li = document.createElement("li");
-      li.className = task.done ? "task done" : "task";
+      li.className = task.is_done ? "task done" : "task";
+
+      const safeTitle = escapeHtml(task.title);
 
       li.innerHTML = `
         <label>
-          <input type="checkbox" ${task.done ? "checked" : ""} data-index="${index}" />
-          <span>${task.title}</span>
+          <input type="checkbox" ${task.is_done ? "checked" : ""} data-id="${task.id}" />
+          <span>${safeTitle}</span>
         </label>
-        <button class="delete" data-index="${index}">Usuń</button>
+        <button class="delete" data-id="${task.id}">Usuń</button>
       `;
 
       taskList.appendChild(li);
@@ -113,8 +206,8 @@ function renderTasks() {
 }
 
 function updateCounter() {
-  const all = tasks.length;
-  const done = tasks.filter(task => task.done).length;
+  const all = currentTasks.length;
+  const done = currentTasks.filter(task => task.is_done).length;
 
   if (all === 1) {
     taskCounter.textContent = "1 zadanie";
@@ -123,21 +216,34 @@ function updateCounter() {
   }
 }
 
-addTaskBtn.addEventListener("click", () => {
+addTaskBtn.addEventListener("click", async () => {
   const title = taskInput.value.trim();
+
+  if (!currentUser) {
+    alert("Najpierw się zaloguj.");
+    return;
+  }
 
   if (!title) {
     alert("Wpisz treść zadania.");
     return;
   }
 
-  tasks.push({
-    title: title,
-    done: false
-  });
+  const { error } = await supabaseClient
+    .from("tasks")
+    .insert({
+      user_id: currentUser.id,
+      title: title,
+      is_done: false
+    });
+
+  if (error) {
+    alert("Błąd dodawania zadania: " + error.message);
+    return;
+  }
 
   taskInput.value = "";
-  renderTasks();
+  await loadTasks();
 });
 
 taskInput.addEventListener("keydown", (event) => {
@@ -146,27 +252,66 @@ taskInput.addEventListener("keydown", (event) => {
   }
 });
 
-taskList.addEventListener("click", (event) => {
+taskList.addEventListener("click", async (event) => {
+  if (!currentUser) return;
+
   if (event.target.matches('input[type="checkbox"]')) {
-    const index = Number(event.target.dataset.index);
-    tasks[index].done = event.target.checked;
-    renderTasks();
+    const taskId = event.target.dataset.id;
+    const isDone = event.target.checked;
+
+    const { error } = await supabaseClient
+      .from("tasks")
+      .update({ is_done: isDone })
+      .eq("id", taskId);
+
+    if (error) {
+      alert("Błąd aktualizacji zadania: " + error.message);
+      return;
+    }
+
+    await loadTasks();
   }
 
   if (event.target.classList.contains("delete")) {
-    const index = Number(event.target.dataset.index);
-    tasks.splice(index, 1);
-    renderTasks();
+    const taskId = event.target.dataset.id;
+
+    const confirmed = confirm("Czy na pewno chcesz usunąć to zadanie?");
+    if (!confirmed) return;
+
+    const { error } = await supabaseClient
+      .from("tasks")
+      .delete()
+      .eq("id", taskId);
+
+    if (error) {
+      alert("Błąd usuwania zadania: " + error.message);
+      return;
+    }
+
+    await loadTasks();
   }
 });
 
 uploadBtn.addEventListener("click", () => {
   const file = fileInput.files[0];
 
+  if (!currentUser) {
+    alert("Najpierw się zaloguj.");
+    return;
+  }
+
   if (!file) {
     alert("Najpierw wybierz plik.");
     return;
   }
 
-  fileInfo.textContent = `Wybrano plik: ${file.name}. W docelowej wersji zostanie zapisany w Supabase Storage.`;
+  fileInfo.textContent = `Wybrano plik: ${file.name}. W kolejnym kroku podłączymy zapis do Supabase Storage.`;
 });
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+checkExistingSession();
