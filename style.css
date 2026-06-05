@@ -426,3 +426,52 @@ button.danger:hover {
   background: #fecaca;
   box-shadow: none;
 }
+.task-main {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+}
+
+.task-attachment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-left: 30px;
+}
+
+.attachment-link {
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
+}
+
+.no-attachment {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.file-label:hover {
+  background: #e0e7ff;
+}
+
+.file-label input {
+  display: none;
+}
