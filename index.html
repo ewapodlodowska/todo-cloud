@@ -20,30 +20,53 @@
     </section>
 
     <section class="card auth-card" id="authSection">
-      <h2>Logowanie i rejestracja</h2>
-      <p class="muted">
-        Najpierw zarejestruj konto, a następnie zaloguj się. Zadania będą zapisywane w chmurze i przypisane do Twojego konta.
-      </p>
-
-      <div class="form-grid">
-        <input type="email" id="email" placeholder="Adres e-mail, np. test@test.pl" />
-        <input type="password" id="password" placeholder="Hasło" />
+      <div class="auth-tabs">
+        <button id="showLoginBtn" class="tab active" type="button">Logowanie</button>
+        <button id="showRegisterBtn" class="tab" type="button">Rejestracja</button>
       </div>
 
-      <div class="password-rules">
-        <p>Wymagania hasła przy rejestracji:</p>
-        <ul>
-          <li>minimum 8 znaków,</li>
-          <li>mała i wielka litera,</li>
-          <li>cyfra,</li>
-          <li>znak specjalny, np. !, @, #.</li>
-        </ul>
+      <div id="loginPanel">
+        <h2>Logowanie</h2>
+        <p class="muted">
+          Zaloguj się na wcześniej zarejestrowane konto.
+        </p>
+
+        <div class="form-grid">
+          <input type="email" id="loginEmail" placeholder="Adres e-mail" />
+          <input type="password" id="loginPassword" placeholder="Hasło" />
+        </div>
+
+        <div class="buttons">
+          <button id="loginBtn" type="button">Zaloguj się</button>
+          <button id="resetPasswordBtn" class="link-button" type="button">Przypomnij hasło</button>
+        </div>
       </div>
 
-      <div class="buttons">
-        <button id="loginBtn">Zaloguj się</button>
-        <button id="registerBtn" class="secondary">Zarejestruj</button>
-        <button id="resetPasswordBtn" class="link-button" type="button">Przypomnij hasło</button>
+      <div id="registerPanel" class="hidden">
+        <h2>Rejestracja</h2>
+        <p class="muted">
+          Utwórz konto. Po rejestracji będzie można się zalogować.
+        </p>
+
+        <div class="form-grid">
+          <input type="text" id="registerName" placeholder="Imię" />
+          <input type="email" id="registerEmail" placeholder="Adres e-mail" />
+          <input type="password" id="registerPassword" placeholder="Hasło" />
+        </div>
+
+        <div class="password-rules">
+          <p>Wymagania hasła przy rejestracji:</p>
+          <ul>
+            <li>minimum 8 znaków,</li>
+            <li>mała i wielka litera,</li>
+            <li>cyfra,</li>
+            <li>znak specjalny, np. !, @, #.</li>
+          </ul>
+        </div>
+
+        <div class="buttons">
+          <button id="registerBtn" type="button">Zarejestruj</button>
+        </div>
       </div>
 
       <p class="hint" id="authMessage"></p>
@@ -52,10 +75,14 @@
     <section class="dashboard hidden" id="dashboardSection">
       <div class="user-bar">
         <div>
-          <p class="muted small-margin">Zalogowano jako:</p>
-          <strong id="userEmail">użytkownik</strong>
+          <p class="muted small-margin">Witaj,</p>
+          <strong id="userGreeting">użytkowniku</strong>
         </div>
-        <button id="logoutBtn" class="secondary">Wyloguj</button>
+
+        <div class="user-actions">
+          <button id="logoutBtn" class="secondary" type="button">Wyloguj</button>
+          <button id="deleteAccountBtn" class="danger" type="button">Usuń konto</button>
+        </div>
       </div>
 
       <section class="card todo-card">
@@ -69,7 +96,7 @@
 
         <div class="add-task">
           <input type="text" id="taskInput" placeholder="Dodaj nowe zadanie..." />
-          <button id="addTaskBtn">Dodaj</button>
+          <button id="addTaskBtn" type="button">Dodaj</button>
         </div>
 
         <ul id="taskList" class="task-list"></ul>
@@ -83,7 +110,7 @@
 
         <div class="file-box">
           <input type="file" id="fileInput" />
-          <button id="uploadBtn" class="secondary">Dodaj załącznik</button>
+          <button id="uploadBtn" class="secondary" type="button">Dodaj załącznik</button>
         </div>
 
         <p id="fileInfo" class="hint"></p>
