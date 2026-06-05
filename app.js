@@ -279,7 +279,16 @@ async function loadTasks() {
 
   const { data, error } = await supabaseClient
     .from("tasks")
-    .select("*")
+    .select(`
+      *,
+      task_attachments (
+        id,
+        file_name,
+        file_path,
+        file_url,
+        created_at
+      )
+    `)
     .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false });
 
@@ -308,9 +317,36 @@ function renderTasks() {
 
       const safeTitle = escapeHtml(task.title);
 
-      const attachmentHtml = task.file_url
-        ? `<a class="attachment-link" href="${task.file_url}" target="_blank" rel="noopener noreferrer">Otwórz załącznik</a>`
-        : `<span class="no-attachment">Brak załącznika</span>`;
+      const attachments = task.task_attachments || [];
+
+      const attachmentsHtml = attachments.length > 0
+        ? attachments.map((file) => `
+            <div class="attachment-item">
+              <span class="attachment-name">${escapeHtml(file.file_name)}</span>
+
+              <div class="attachment-actions">
+                <a 
+                  class="attachment-link" 
+                  href="${file.file_url}" 
+                  download="${escapeHtml(file.file_name)}"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  Pobierz
+                </a>
+
+                <button 
+                  class="delete-attachment" 
+                  type="button"
+                  data-attachment-id="${file.id}"
+                  data-file-path="${escapeHtml(file.file_path)}"
+                >
+                  Usuń
+                </button>
+              </div>
+            </div>
+          `).join("")
+        : `<span class="no-attachment">Brak załączników</span>`;
 
       li.innerHTML = `
         <div class="task-main">
@@ -320,7 +356,10 @@ function renderTasks() {
           </label>
 
           <div class="task-attachment">
-            ${attachmentHtml}
+            <div class="attachment-list">
+              ${attachmentsHtml}
+            </div>
+
             <label class="file-label">
               Dodaj załącznik
               <input type="file" class="task-file-input" data-id="${task.id}" />
@@ -328,7 +367,7 @@ function renderTasks() {
           </div>
         </div>
 
-        <button class="delete" data-id="${task.id}">Usuń</button>
+        <button class="delete" data-id="${task.id}">Usuń zadanie</button>
       `;
 
       taskList.appendChild(li);
@@ -406,11 +445,27 @@ taskList.addEventListener("click", async (event) => {
     await loadTasks();
   }
 
-  if (event.target.classList.contains("delete")) {
+    if (event.target.classList.contains("delete")) {
     const taskId = event.target.dataset.id;
 
-    const confirmed = confirm("Czy na pewno chcesz usunąć to zadanie?");
+    const confirmed = confirm("Czy na pewno chcesz usunąć to zadanie razem z załącznikami?");
     if (!confirmed) return;
+
+    const task = currentTasks.find(item => item.id === taskId);
+    const attachments = task?.task_attachments || [];
+
+    if (attachments.length > 0) {
+      const paths = attachments.map(file => file.file_path);
+
+      const { error: storageError } = await supabaseClient.storage
+        .from("task-files")
+        .remove(paths);
+
+      if (storageError) {
+        alert("Błąd usuwania załączników ze Storage: " + storageError.message);
+        return;
+      }
+    }
 
     const { error } = await supabaseClient
       .from("tasks")
@@ -467,18 +522,52 @@ taskList.addEventListener("change", async (event) => {
     .from("task-files")
     .getPublicUrl(filePath);
 
-  const { error: updateError } = await supabaseClient
-    .from("tasks")
-    .update({ file_url: data.publicUrl })
-    .eq("id", taskId)
-    .eq("user_id", currentUser.id);
+  const { error: insertError } = await supabaseClient
+    .from("task_attachments")
+    .insert({
+      task_id: taskId,
+      user_id: currentUser.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_url: data.publicUrl
+    });
 
-  if (updateError) {
-    alert("Plik został przesłany, ale nie udało się przypisać go do zadania: " + updateError.message);
+  if (insertError) {
+    alert("Plik został przesłany, ale nie udało się zapisać informacji o załączniku: " + insertError.message);
     return;
   }
 
+  event.target.value = "";
   await loadTasks();
+    if (event.target.classList.contains("delete-attachment")) {
+    const attachmentId = event.target.dataset.attachmentId;
+    const filePath = event.target.dataset.filePath;
+
+    const confirmed = confirm("Czy na pewno chcesz usunąć ten załącznik?");
+    if (!confirmed) return;
+
+    const { error: storageError } = await supabaseClient.storage
+      .from("task-files")
+      .remove([filePath]);
+
+    if (storageError) {
+      alert("Błąd usuwania pliku ze Storage: " + storageError.message);
+      return;
+    }
+
+    const { error: dbError } = await supabaseClient
+      .from("task_attachments")
+      .delete()
+      .eq("id", attachmentId)
+      .eq("user_id", currentUser.id);
+
+    if (dbError) {
+      alert("Plik usunięto ze Storage, ale nie udało się usunąć wpisu z bazy: " + dbError.message);
+      return;
+    }
+
+    await loadTasks();
+  }
 });
 
 function escapeHtml(text) {
