@@ -84,6 +84,37 @@
           <button id="deleteAccountBtn" class="danger" type="button">Usuń konto</button>
         </div>
       </div>
+      <section class="card stats-card">
+  <div class="section-header">
+    <div>
+      <h2>Statystyki</h2>
+      <p class="muted">Statystyki są pobierane z funkcji serverless Supabase Edge Functions.</p>
+    </div>
+    <button id="refreshStatsBtn" class="secondary" type="button">Odśwież</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-box">
+      <span id="totalTasksStat">0</span>
+      <p>Wszystkie zadania</p>
+    </div>
+
+    <div class="stat-box">
+      <span id="completedTasksStat">0</span>
+      <p>Wykonane</p>
+    </div>
+
+    <div class="stat-box">
+      <span id="activeTasksStat">0</span>
+      <p>Niewykonane</p>
+    </div>
+
+    <div class="stat-box">
+      <span id="attachmentsStat">0</span>
+      <p>Załączniki</p>
+    </div>
+  </div>
+</section>
 
       <section class="card todo-card">
         <div class="section-header">
