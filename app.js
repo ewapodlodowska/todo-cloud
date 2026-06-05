@@ -1,6 +1,7 @@
 const SUPABASE_URL = "https://xijenfukrraduprwroam.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpamVuZnVrcnJhZHVwcndyb2FtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzU4OTQsImV4cCI6MjA5NjE1MTg5NH0.ZBHU56reQAhhts8Zco2B8ddthhbn9WkL2RbOJ6hTeIk";
 
+
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const authSection = document.getElementById("authSection");
@@ -230,6 +231,7 @@ function showAuth() {
 
   taskList.innerHTML = "";
   taskCounter.textContent = "0 zadań";
+
   showLoginTab();
 }
 
@@ -242,7 +244,7 @@ deleteAccountBtn.addEventListener("click", async () => {
   if (!currentUser) return;
 
   const confirmed = confirm(
-    "Czy na pewno chcesz usunąć konto? W tej wersji zostaną usunięte Twoje zadania i nastąpi wylogowanie. Pełne usunięcie konta z Supabase Auth wymaga funkcji serverless, którą można dodać jako kolejny etap projektu."
+    "Czy na pewno chcesz usunąć konto? W tej wersji zostaną usunięte Twoje zadania i nastąpi wylogowanie."
   );
 
   if (!confirmed) return;
@@ -423,8 +425,9 @@ taskList.addEventListener("click", async (event) => {
 
     await loadTasks();
   }
-}
-                         taskList.addEventListener("change", async (event) => {
+});
+
+taskList.addEventListener("change", async (event) => {
   if (!event.target.classList.contains("task-file-input")) return;
 
   if (!currentUser) {
@@ -477,3 +480,11 @@ taskList.addEventListener("click", async (event) => {
 
   await loadTasks();
 });
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+checkExistingSession();
