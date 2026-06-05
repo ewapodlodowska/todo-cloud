@@ -415,7 +415,7 @@ taskList.addEventListener("click", async (event) => {
   }
 });
 
-uploadBtn.addEventListener("click", () => {
+uploadBtn.addEventListener("click", async () => {
   const file = fileInput.files[0];
 
   if (!currentUser) {
@@ -428,7 +428,41 @@ uploadBtn.addEventListener("click", () => {
     return;
   }
 
-  fileInfo.textContent = `Wybrano plik: ${file.name}. W kolejnym kroku podłączymy zapis do Supabase Storage.`;
+  const maxFileSize = 2 * 1024 * 1024;
+
+  if (file.size > maxFileSize) {
+    alert("Plik jest za duży. Na potrzeby projektu wybierz plik do 2 MB.");
+    return;
+  }
+
+  const safeFileName = file.name
+    .replaceAll(" ", "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
+
+  const filePath = `${currentUser.id}/${Date.now()}_${safeFileName}`;
+
+  fileInfo.textContent = "Trwa przesyłanie pliku do chmury...";
+
+  const { error } = await supabaseClient.storage
+    .from("task-files")
+    .upload(filePath, file);
+
+  if (error) {
+    fileInfo.textContent = "";
+    alert("Błąd przesyłania pliku: " + error.message);
+    return;
+  }
+
+  const { data } = supabaseClient.storage
+    .from("task-files")
+    .getPublicUrl(filePath);
+
+  fileInfo.innerHTML = `
+    Plik został zapisany w chmurze:
+    <a href="${data.publicUrl}" target="_blank" rel="noopener noreferrer">otwórz plik</a>
+  `;
+
+  fileInput.value = "";
 });
 
 function escapeHtml(text) {
