@@ -1,18 +1,92 @@
-ToDo Cloud
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToDo Cloud</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <p class="badge">Cloud project</p>
+        <h1>ToDo Cloud</h1>
+        <p class="subtitle">
+          Prosta aplikacja do zarządzania zadaniami z wykorzystaniem usług chmurowych.
+        </p>
+      </div>
+    </section>
 
-[ karta logowania ]
-email
-hasło
-Zaloguj się / Zarejestruj
+    <section class="card auth-card">
+      <h2>Logowanie</h2>
+      <p class="muted">Zaloguj się lub utwórz konto, aby zapisywać zadania w chmurze.</p>
 
-[ karta zadań ]
-Dodaj nowe zadanie...
-[ Dodaj ]
+      <div class="form-grid">
+        <input type="email" id="email" placeholder="Adres e-mail" />
+        <input type="password" id="password" placeholder="Hasło" />
+      </div>
 
-Lista:
-☐ Przygotować dokument
-☑ Sprawdzić Supabase
-☐ Wysłać projekt
+      <div class="buttons">
+        <button id="loginBtn">Zaloguj się</button>
+        <button id="registerBtn" class="secondary">Zarejestruj</button>
+      </div>
+    </section>
 
-[ upload pliku ]
-Dodaj załącznik do zadania
+    <section class="card todo-card">
+      <div class="section-header">
+        <div>
+          <h2>Moje zadania</h2>
+          <p class="muted">Dodawaj, oznaczaj i usuwaj zadania.</p>
+        </div>
+        <span class="counter">3 zadania</span>
+      </div>
+
+      <div class="add-task">
+        <input type="text" id="taskInput" placeholder="Dodaj nowe zadanie..." />
+        <button id="addTaskBtn">Dodaj</button>
+      </div>
+
+      <ul id="taskList" class="task-list">
+        <li class="task">
+          <label>
+            <input type="checkbox" />
+            <span>Przygotować dokument</span>
+          </label>
+          <button class="delete">Usuń</button>
+        </li>
+
+        <li class="task done">
+          <label>
+            <input type="checkbox" checked />
+            <span>Sprawdzić Supabase</span>
+          </label>
+          <button class="delete">Usuń</button>
+        </li>
+
+        <li class="task">
+          <label>
+            <input type="checkbox" />
+            <span>Wysłać projekt</span>
+          </label>
+          <button class="delete">Usuń</button>
+        </li>
+      </ul>
+    </section>
+
+    <section class="card upload-card">
+      <h2>Załącznik</h2>
+      <p class="muted">
+        Tutaj użytkownik będzie mógł dodać plik do zadania. Plik zostanie zapisany w chmurze.
+      </p>
+
+      <div class="file-box">
+        <input type="file" id="fileInput" />
+        <button id="uploadBtn" class="secondary">Dodaj załącznik</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
