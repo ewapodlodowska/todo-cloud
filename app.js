@@ -421,125 +421,77 @@ taskInput.addEventListener("keydown", (event) => {
     addTaskBtn.click();
   }
 });
-
-taskList.addEventListener("click", async (event) => {
-  if (!currentUser) return;
-
-  if (event.target.classList.contains("download-attachment")) {
-    const fileUrl = event.target.dataset.fileUrl;
-    const fileName = event.target.dataset.fileName || "zalacznik";
-
-    try {
-      const response = await fetch(fileUrl);
-
-      if (!response.ok) {
-        alert("Nie udało się pobrać pliku.");
-        return;
-      }
-
-      const blob = await response.blob();
-      const temporaryUrl = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = temporaryUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(temporaryUrl);
-    } catch (error) {
-      alert("Błąd pobierania pliku: " + error.message);
-    }
-
+taskList.addEventListener("change", async (event) => {
+  if (!event.target.classList.contains("task-file-input")) {
     return;
   }
 
-  if (event.target.classList.contains("delete-attachment")) {
-    const attachmentId = event.target.dataset.attachmentId;
-    const filePath = event.target.dataset.filePath;
-
-    const confirmed = confirm("Czy na pewno chcesz usunąć ten załącznik?");
-    if (!confirmed) return;
-
-    const { error: storageError } = await supabaseClient.storage
-      .from("task-files")
-      .remove([filePath]);
-
-    if (storageError) {
-      alert("Błąd usuwania pliku ze Storage: " + storageError.message);
-      return;
-    }
-
-    const { error: dbError } = await supabaseClient
-      .from("task_attachments")
-      .delete()
-      .eq("id", attachmentId)
-      .eq("user_id", currentUser.id);
-
-    if (dbError) {
-      alert("Plik usunięto ze Storage, ale nie udało się usunąć wpisu z bazy: " + dbError.message);
-      return;
-    }
-
-    await loadTasks();
+  if (!currentUser) {
+    alert("Najpierw się zaloguj.");
     return;
   }
 
-  if (event.target.matches('input[type="checkbox"]')) {
-    const taskId = event.target.dataset.id;
-    const isDone = event.target.checked;
+  const taskId = event.target.dataset.id;
+  const file = event.target.files[0];
 
-    const { error } = await supabaseClient
-      .from("tasks")
-      .update({ is_done: isDone })
-      .eq("id", taskId)
-      .eq("user_id", currentUser.id);
-
-    if (error) {
-      alert("Błąd aktualizacji zadania: " + error.message);
-      return;
-    }
-
-    await loadTasks();
+  if (!taskId) {
+    alert("Nie znaleziono identyfikatora zadania.");
     return;
   }
 
-  if (event.target.classList.contains("delete")) {
-    const taskId = event.target.dataset.id;
-
-    const confirmed = confirm("Czy na pewno chcesz usunąć to zadanie razem z załącznikami?");
-    if (!confirmed) return;
-
-    const task = currentTasks.find(item => item.id === taskId);
-    const attachments = task?.task_attachments || [];
-
-    if (attachments.length > 0) {
-      const paths = attachments.map(file => file.file_path);
-
-      const { error: storageError } = await supabaseClient.storage
-        .from("task-files")
-        .remove(paths);
-
-      if (storageError) {
-        alert("Błąd usuwania załączników ze Storage: " + storageError.message);
-        return;
-      }
-    }
-
-    const { error } = await supabaseClient
-      .from("tasks")
-      .delete()
-      .eq("id", taskId)
-      .eq("user_id", currentUser.id);
-
-    if (error) {
-      alert("Błąd usuwania zadania: " + error.message);
-      return;
-    }
-
-    await loadTasks();
+  if (!file) {
+    alert("Nie wybrano pliku.");
+    return;
   }
+
+  const maxFileSize = 2 * 1024 * 1024;
+
+  if (file.size > maxFileSize) {
+    alert("Plik jest za duży. Na potrzeby projektu wybierz plik do 2 MB.");
+    event.target.value = "";
+    return;
+  }
+
+  const safeFileName = file.name
+    .replaceAll(" ", "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
+
+  const filePath = `${currentUser.id}/${taskId}/${Date.now()}_${safeFileName}`;
+
+  alert("Rozpoczynam przesyłanie pliku do chmury.");
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from("task-files")
+    .upload(filePath, file);
+
+  if (uploadError) {
+    alert("Błąd przesyłania pliku do Storage: " + uploadError.message);
+    return;
+  }
+
+  const { data } = supabaseClient.storage
+    .from("task-files")
+    .getPublicUrl(filePath);
+
+  const { error: insertError } = await supabaseClient
+    .from("task_attachments")
+    .insert({
+      task_id: taskId,
+      user_id: currentUser.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_url: data.publicUrl
+    });
+
+  if (insertError) {
+    alert("Plik został przesłany, ale nie udało się zapisać informacji o załączniku: " + insertError.message);
+    return;
+  }
+
+  alert("Załącznik został dodany do zadania.");
+
+  event.target.value = "";
+  await loadTasks();
 });
 
 function escapeHtml(text) {
