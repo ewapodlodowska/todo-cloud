@@ -316,7 +316,6 @@ function renderTasks() {
       li.className = task.is_done ? "task done" : "task";
 
       const safeTitle = escapeHtml(task.title);
-
       const attachments = task.task_attachments || [];
 
       const attachmentsHtml = attachments.length > 0
@@ -325,15 +324,14 @@ function renderTasks() {
               <span class="attachment-name">${escapeHtml(file.file_name)}</span>
 
               <div class="attachment-actions">
-                <a 
-                  class="attachment-link" 
-                  href="${file.file_url}" 
-                  download="${escapeHtml(file.file_name)}"
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                <button 
+                  class="download-attachment" 
+                  type="button"
+                  data-file-url="${escapeHtml(file.file_url)}"
+                  data-file-name="${escapeHtml(file.file_name)}"
                 >
                   Pobierz
-                </a>
+                </button>
 
                 <button 
                   class="delete-attachment" 
@@ -482,64 +480,40 @@ taskList.addEventListener("click", async (event) => {
   }
 });
 
-taskList.addEventListener("change", async (event) => {
-  if (!event.target.classList.contains("task-file-input")) return;
+taskList.addEventListener("click", async (event) => {
+  if (!currentUser) return;
 
-  if (!currentUser) {
-    alert("Najpierw się zaloguj.");
+  if (event.target.classList.contains("download-attachment")) {
+    const fileUrl = event.target.dataset.fileUrl;
+    const fileName = event.target.dataset.fileName || "zalacznik";
+
+    try {
+      const response = await fetch(fileUrl);
+
+      if (!response.ok) {
+        alert("Nie udało się pobrać pliku.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const temporaryUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = temporaryUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(temporaryUrl);
+    } catch (error) {
+      alert("Błąd pobierania pliku: " + error.message);
+    }
+
     return;
   }
 
-  const taskId = event.target.dataset.id;
-  const file = event.target.files[0];
-
-  if (!file) return;
-
-  const maxFileSize = 2 * 1024 * 1024;
-
-  if (file.size > maxFileSize) {
-    alert("Plik jest za duży. Na potrzeby projektu wybierz plik do 2 MB.");
-    event.target.value = "";
-    return;
-  }
-
-  const safeFileName = file.name
-    .replaceAll(" ", "_")
-    .replace(/[^a-zA-Z0-9._-]/g, "");
-
-  const filePath = `${currentUser.id}/${taskId}/${Date.now()}_${safeFileName}`;
-
-  const { error: uploadError } = await supabaseClient.storage
-    .from("task-files")
-    .upload(filePath, file);
-
-  if (uploadError) {
-    alert("Błąd przesyłania pliku: " + uploadError.message);
-    return;
-  }
-
-  const { data } = supabaseClient.storage
-    .from("task-files")
-    .getPublicUrl(filePath);
-
-  const { error: insertError } = await supabaseClient
-    .from("task_attachments")
-    .insert({
-      task_id: taskId,
-      user_id: currentUser.id,
-      file_name: file.name,
-      file_path: filePath,
-      file_url: data.publicUrl
-    });
-
-  if (insertError) {
-    alert("Plik został przesłany, ale nie udało się zapisać informacji o załączniku: " + insertError.message);
-    return;
-  }
-
-  event.target.value = "";
-  await loadTasks();
-    if (event.target.classList.contains("delete-attachment")) {
+  if (event.target.classList.contains("delete-attachment")) {
     const attachmentId = event.target.dataset.attachmentId;
     const filePath = event.target.dataset.filePath;
 
@@ -563,6 +537,62 @@ taskList.addEventListener("change", async (event) => {
 
     if (dbError) {
       alert("Plik usunięto ze Storage, ale nie udało się usunąć wpisu z bazy: " + dbError.message);
+      return;
+    }
+
+    await loadTasks();
+    return;
+  }
+
+  if (event.target.matches('input[type="checkbox"]')) {
+    const taskId = event.target.dataset.id;
+    const isDone = event.target.checked;
+
+    const { error } = await supabaseClient
+      .from("tasks")
+      .update({ is_done: isDone })
+      .eq("id", taskId)
+      .eq("user_id", currentUser.id);
+
+    if (error) {
+      alert("Błąd aktualizacji zadania: " + error.message);
+      return;
+    }
+
+    await loadTasks();
+    return;
+  }
+
+  if (event.target.classList.contains("delete")) {
+    const taskId = event.target.dataset.id;
+
+    const confirmed = confirm("Czy na pewno chcesz usunąć to zadanie razem z załącznikami?");
+    if (!confirmed) return;
+
+    const task = currentTasks.find(item => item.id === taskId);
+    const attachments = task?.task_attachments || [];
+
+    if (attachments.length > 0) {
+      const paths = attachments.map(file => file.file_path);
+
+      const { error: storageError } = await supabaseClient.storage
+        .from("task-files")
+        .remove(paths);
+
+      if (storageError) {
+        alert("Błąd usuwania załączników ze Storage: " + storageError.message);
+        return;
+      }
+    }
+
+    const { error } = await supabaseClient
+      .from("tasks")
+      .delete()
+      .eq("id", taskId)
+      .eq("user_id", currentUser.id);
+
+    if (error) {
+      alert("Błąd usuwania zadania: " + error.message);
       return;
     }
 
