@@ -13,14 +13,17 @@
         <p class="badge">Cloud project</p>
         <h1>ToDo Cloud</h1>
         <p class="subtitle">
-          Prosta aplikacja do zarządzania zadaniami z wykorzystaniem usług chmurowych.
+          Prosta aplikacja do zarządzania zadaniami z wykorzystaniem usług chmurowych:
+          hostingu, bazy danych, logowania, przechowywania plików i funkcji serverless.
         </p>
       </div>
     </section>
 
-    <section class="card auth-card">
+    <section class="card auth-card" id="authSection">
       <h2>Logowanie</h2>
-      <p class="muted">Zaloguj się lub utwórz konto, aby zapisywać zadania w chmurze.</p>
+      <p class="muted">
+        Zaloguj się lub utwórz konto, aby zobaczyć swoje zadania zapisane w chmurze.
+      </p>
 
       <div class="form-grid">
         <input type="email" id="email" placeholder="Adres e-mail" />
@@ -31,59 +34,51 @@
         <button id="loginBtn">Zaloguj się</button>
         <button id="registerBtn" class="secondary">Zarejestruj</button>
       </div>
-    </section>
 
-    <section class="card todo-card">
-      <div class="section-header">
-        <div>
-          <h2>Moje zadania</h2>
-          <p class="muted">Dodawaj, oznaczaj i usuwaj zadania.</p>
-        </div>
-        <span class="counter">3 zadania</span>
-      </div>
-
-      <div class="add-task">
-        <input type="text" id="taskInput" placeholder="Dodaj nowe zadanie..." />
-        <button id="addTaskBtn">Dodaj</button>
-      </div>
-
-      <ul id="taskList" class="task-list">
-        <li class="task">
-          <label>
-            <input type="checkbox" />
-            <span>Przygotować dokument</span>
-          </label>
-          <button class="delete">Usuń</button>
-        </li>
-
-        <li class="task done">
-          <label>
-            <input type="checkbox" checked />
-            <span>Sprawdzić Supabase</span>
-          </label>
-          <button class="delete">Usuń</button>
-        </li>
-
-        <li class="task">
-          <label>
-            <input type="checkbox" />
-            <span>Wysłać projekt</span>
-          </label>
-          <button class="delete">Usuń</button>
-        </li>
-      </ul>
-    </section>
-
-    <section class="card upload-card">
-      <h2>Załącznik</h2>
-      <p class="muted">
-        Tutaj użytkownik będzie mógł dodać plik do zadania. Plik zostanie zapisany w chmurze.
+      <p class="hint">
+        Na tym etapie logowanie jest demonstracyjne. Później zostanie połączone z Supabase Auth.
       </p>
+    </section>
 
-      <div class="file-box">
-        <input type="file" id="fileInput" />
-        <button id="uploadBtn" class="secondary">Dodaj załącznik</button>
+    <section class="dashboard hidden" id="dashboardSection">
+      <div class="user-bar">
+        <div>
+          <p class="muted small-margin">Zalogowano jako:</p>
+          <strong id="userEmail">użytkownik</strong>
+        </div>
+        <button id="logoutBtn" class="secondary">Wyloguj</button>
       </div>
+
+      <section class="card todo-card">
+        <div class="section-header">
+          <div>
+            <h2>Moje zadania</h2>
+            <p class="muted">Dodawaj, oznaczaj i usuwaj zadania.</p>
+          </div>
+          <span class="counter" id="taskCounter">0 zadań</span>
+        </div>
+
+        <div class="add-task">
+          <input type="text" id="taskInput" placeholder="Dodaj nowe zadanie..." />
+          <button id="addTaskBtn">Dodaj</button>
+        </div>
+
+        <ul id="taskList" class="task-list"></ul>
+      </section>
+
+      <section class="card upload-card">
+        <h2>Załącznik</h2>
+        <p class="muted">
+          Tutaj użytkownik może dodać plik do zadania. W docelowej wersji plik zostanie zapisany w Supabase Storage.
+        </p>
+
+        <div class="file-box">
+          <input type="file" id="fileInput" />
+          <button id="uploadBtn" class="secondary">Dodaj załącznik</button>
+        </div>
+
+        <p id="fileInfo" class="hint"></p>
+      </section>
     </section>
   </main>
 
