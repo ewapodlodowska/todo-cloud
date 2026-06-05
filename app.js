@@ -33,6 +33,12 @@ const addTaskBtn = document.getElementById("addTaskBtn");
 const taskList = document.getElementById("taskList");
 const taskCounter = document.getElementById("taskCounter");
 
+const refreshStatsBtn = document.getElementById("refreshStatsBtn");
+const totalTasksStat = document.getElementById("totalTasksStat");
+const completedTasksStat = document.getElementById("completedTasksStat");
+const activeTasksStat = document.getElementById("activeTasksStat");
+const attachmentsStat = document.getElementById("attachmentsStat");
+
 let currentUser = null;
 let currentTasks = [];
 
@@ -220,6 +226,7 @@ async function showDashboard(user) {
   setMessage("");
 
   await loadTasks();
+  await loadStats();
 }
 
 function showAuth() {
@@ -231,7 +238,10 @@ function showAuth() {
 
   taskList.innerHTML = "";
   taskCounter.textContent = "0 zadań";
-
+  totalTasksStat.textContent = "0";
+  completedTasksStat.textContent = "0";
+  activeTasksStat.textContent = "0";
+  attachmentsStat.textContent = "0";
   showLoginTab();
 }
 
@@ -239,7 +249,9 @@ logoutBtn.addEventListener("click", async () => {
   await supabaseClient.auth.signOut();
   showAuth();
 });
-
+refreshStatsBtn.addEventListener("click", async () => {
+  await loadStats();
+});
 deleteAccountBtn.addEventListener("click", async () => {
   if (!currentUser) return;
 
@@ -272,6 +284,21 @@ async function checkExistingSession() {
   } else {
     showAuth();
   }
+}
+async function loadStats() {
+  if (!currentUser) return;
+
+  const { data, error } = await supabaseClient.functions.invoke("get-task-stats");
+
+  if (error) {
+    alert("Błąd pobierania statystyk: " + error.message);
+    return;
+  }
+
+  totalTasksStat.textContent = data.totalTasks;
+  completedTasksStat.textContent = data.completedTasks;
+  activeTasksStat.textContent = data.activeTasks;
+  attachmentsStat.textContent = data.totalAttachments;
 }
 
 async function loadTasks() {
@@ -414,6 +441,7 @@ addTaskBtn.addEventListener("click", async () => {
 
   taskInput.value = "";
   await loadTasks();
+  await loadStats();
 });
 
 taskInput.addEventListener("keydown", (event) => {
@@ -497,6 +525,7 @@ taskList.addEventListener("click", async (event) => {
     }
 
     await loadTasks();
+    await loadStats();
     return;
   }
 
@@ -516,6 +545,7 @@ taskList.addEventListener("click", async (event) => {
     }
 
     await loadTasks();
+    await loadStats();
     return;
   }
 
@@ -553,6 +583,7 @@ taskList.addEventListener("click", async (event) => {
     }
 
     await loadTasks();
+    await loadStats();
   }
 });
 taskList.addEventListener("change", async (event) => {
@@ -622,6 +653,7 @@ taskList.addEventListener("change", async (event) => {
 
   event.target.value = "";
   await loadTasks();
+  await loadStats();
 });
 
 function escapeHtml(text) {
