@@ -425,64 +425,6 @@ taskInput.addEventListener("keydown", (event) => {
 taskList.addEventListener("click", async (event) => {
   if (!currentUser) return;
 
-  if (event.target.matches('input[type="checkbox"]')) {
-    const taskId = event.target.dataset.id;
-    const isDone = event.target.checked;
-
-    const { error } = await supabaseClient
-      .from("tasks")
-      .update({ is_done: isDone })
-      .eq("id", taskId)
-      .eq("user_id", currentUser.id);
-
-    if (error) {
-      alert("Błąd aktualizacji zadania: " + error.message);
-      return;
-    }
-
-    await loadTasks();
-  }
-
-    if (event.target.classList.contains("delete")) {
-    const taskId = event.target.dataset.id;
-
-    const confirmed = confirm("Czy na pewno chcesz usunąć to zadanie razem z załącznikami?");
-    if (!confirmed) return;
-
-    const task = currentTasks.find(item => item.id === taskId);
-    const attachments = task?.task_attachments || [];
-
-    if (attachments.length > 0) {
-      const paths = attachments.map(file => file.file_path);
-
-      const { error: storageError } = await supabaseClient.storage
-        .from("task-files")
-        .remove(paths);
-
-      if (storageError) {
-        alert("Błąd usuwania załączników ze Storage: " + storageError.message);
-        return;
-      }
-    }
-
-    const { error } = await supabaseClient
-      .from("tasks")
-      .delete()
-      .eq("id", taskId)
-      .eq("user_id", currentUser.id);
-
-    if (error) {
-      alert("Błąd usuwania zadania: " + error.message);
-      return;
-    }
-
-    await loadTasks();
-  }
-});
-
-taskList.addEventListener("click", async (event) => {
-  if (!currentUser) return;
-
   if (event.target.classList.contains("download-attachment")) {
     const fileUrl = event.target.dataset.fileUrl;
     const fileName = event.target.dataset.fileName || "zalacznik";
