@@ -6,16 +6,26 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const authSection = document.getElementById("authSection");
 const dashboardSection = document.getElementById("dashboardSection");
 
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
+const showLoginBtn = document.getElementById("showLoginBtn");
+const showRegisterBtn = document.getElementById("showRegisterBtn");
+const loginPanel = document.getElementById("loginPanel");
+const registerPanel = document.getElementById("registerPanel");
+
+const loginEmail = document.getElementById("loginEmail");
+const loginPassword = document.getElementById("loginPassword");
+
+const registerName = document.getElementById("registerName");
+const registerEmail = document.getElementById("registerEmail");
+const registerPassword = document.getElementById("registerPassword");
 
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
 const resetPasswordBtn = document.getElementById("resetPasswordBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+const deleteAccountBtn = document.getElementById("deleteAccountBtn");
 
 const authMessage = document.getElementById("authMessage");
-const userEmail = document.getElementById("userEmail");
+const userGreeting = document.getElementById("userGreeting");
 
 const taskInput = document.getElementById("taskInput");
 const addTaskBtn = document.getElementById("addTaskBtn");
@@ -34,6 +44,25 @@ function setMessage(text, type = "info") {
   authMessage.className = `hint ${type}`;
 }
 
+function showLoginTab() {
+  loginPanel.classList.remove("hidden");
+  registerPanel.classList.add("hidden");
+  showLoginBtn.classList.add("active");
+  showRegisterBtn.classList.remove("active");
+  setMessage("");
+}
+
+function showRegisterTab() {
+  registerPanel.classList.remove("hidden");
+  loginPanel.classList.add("hidden");
+  showRegisterBtn.classList.add("active");
+  showLoginBtn.classList.remove("active");
+  setMessage("");
+}
+
+showLoginBtn.addEventListener("click", showLoginTab);
+showRegisterBtn.addEventListener("click", showRegisterTab);
+
 function isValidEmail(email) {
   const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return pattern.test(email);
@@ -49,31 +78,19 @@ function isStrongPassword(password) {
   return minLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 }
 
-function getEmailAndPassword() {
-  return {
-    email: emailInput.value.trim(),
-    password: passwordInput.value.trim()
-  };
-}
+function validateLoginForm() {
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value.trim();
 
-function validateEmailOnly(email) {
   if (!email) {
     setMessage("Wpisz adres e-mail.", "error");
-    return false;
+    return null;
   }
 
   if (!isValidEmail(email)) {
     setMessage("Wpisz poprawny adres e-mail, np. test@test.pl.", "error");
-    return false;
+    return null;
   }
-
-  return true;
-}
-
-function validateLoginForm() {
-  const { email, password } = getEmailAndPassword();
-
-  if (!validateEmailOnly(email)) return null;
 
   if (!password) {
     setMessage("Wpisz hasło.", "error");
@@ -84,9 +101,24 @@ function validateLoginForm() {
 }
 
 function validateRegisterForm() {
-  const { email, password } = getEmailAndPassword();
+  const name = registerName.value.trim();
+  const email = registerEmail.value.trim();
+  const password = registerPassword.value.trim();
 
-  if (!validateEmailOnly(email)) return null;
+  if (!name) {
+    setMessage("Wpisz imię.", "error");
+    return null;
+  }
+
+  if (!email) {
+    setMessage("Wpisz adres e-mail.", "error");
+    return null;
+  }
+
+  if (!isValidEmail(email)) {
+    setMessage("Wpisz poprawny adres e-mail, np. test@test.pl.", "error");
+    return null;
+  }
 
   if (!password) {
     setMessage("Wpisz hasło.", "error");
@@ -95,14 +127,84 @@ function validateRegisterForm() {
 
   if (!isStrongPassword(password)) {
     setMessage(
-      "Hasło jest zbyt słabe. Przy rejestracji hasło musi mieć minimum 8 znaków, małą literę, wielką literę, cyfrę i znak specjalny.",
+      "Hasło jest zbyt słabe. Musi mieć minimum 8 znaków, małą literę, wielką literę, cyfrę i znak specjalny.",
       "error"
     );
     return null;
   }
 
-  return { email, password };
+  return { name, email, password };
 }
+
+registerBtn.addEventListener("click", async () => {
+  const form = validateRegisterForm();
+  if (!form) return;
+
+  const { error } = await supabaseClient.auth.signUp({
+    email: form.email,
+    password: form.password,
+    options: {
+      data: {
+        first_name: form.name
+      }
+    }
+  });
+
+  if (error) {
+    setMessage("Błąd rejestracji: " + error.message, "error");
+    return;
+  }
+
+  setMessage("Konto zostało zarejestrowane. Teraz możesz się zalogować.", "success");
+
+  loginEmail.value = form.email;
+  loginPassword.value = "";
+  registerPassword.value = "";
+
+  showLoginTab();
+});
+
+loginBtn.addEventListener("click", async () => {
+  const form = validateLoginForm();
+  if (!form) return;
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: form.email,
+    password: form.password
+  });
+
+  if (error) {
+    setMessage("Nie udało się zalogować. Najpierw zarejestruj konto albo sprawdź dane.", "error");
+    return;
+  }
+
+  await showDashboard(data.user);
+});
+
+resetPasswordBtn.addEventListener("click", async () => {
+  const email = loginEmail.value.trim();
+
+  if (!email) {
+    setMessage("Wpisz adres e-mail, dla którego chcesz przypomnieć hasło.", "error");
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    setMessage("Wpisz poprawny adres e-mail.", "error");
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
+  });
+
+  if (error) {
+    setMessage("Nie udało się wysłać linku resetującego hasło: " + error.message, "error");
+    return;
+  }
+
+  setMessage("Jeśli konto istnieje, na e-mail zostanie wysłany link do resetowania hasła.", "success");
+});
 
 async function showDashboard(user) {
   currentUser = user;
@@ -110,10 +212,14 @@ async function showDashboard(user) {
   authSection.classList.add("hidden");
   dashboardSection.classList.remove("hidden");
 
-  userEmail.textContent = user.email;
+  const firstName = user.user_metadata?.first_name || user.email;
+  userGreeting.textContent = firstName;
 
-  emailInput.value = "";
-  passwordInput.value = "";
+  loginEmail.value = "";
+  loginPassword.value = "";
+  registerName.value = "";
+  registerEmail.value = "";
+  registerPassword.value = "";
   setMessage("");
 
   await loadTasks();
@@ -129,72 +235,35 @@ function showAuth() {
   taskList.innerHTML = "";
   taskCounter.textContent = "0 zadań";
   fileInfo.textContent = "";
+  showLoginTab();
 }
-
-registerBtn.addEventListener("click", async () => {
-  const form = validateRegisterForm();
-  if (!form) return;
-
-  const { error } = await supabaseClient.auth.signUp({
-    email: form.email,
-    password: form.password
-  });
-
-  if (error) {
-    setMessage("Błąd rejestracji: " + error.message, "error");
-    return;
-  }
-
-  setMessage(
-    "Konto zostało zarejestrowane. Teraz możesz się zalogować tym samym adresem e-mail i hasłem.",
-    "success"
-  );
-
-  passwordInput.value = "";
-});
-
-loginBtn.addEventListener("click", async () => {
-  const form = validateLoginForm();
-  if (!form) return;
-
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email: form.email,
-    password: form.password
-  });
-
-  if (error) {
-    setMessage(
-      "Nie udało się zalogować. Najpierw zarejestruj konto albo sprawdź e-mail i hasło.",
-      "error"
-    );
-    return;
-  }
-
-  await showDashboard(data.user);
-});
-
-resetPasswordBtn.addEventListener("click", async () => {
-  const email = emailInput.value.trim();
-
-  if (!validateEmailOnly(email)) return;
-
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin
-  });
-
-  if (error) {
-    setMessage("Nie udało się wysłać wiadomości resetującej hasło: " + error.message, "error");
-    return;
-  }
-
-  setMessage(
-    "Jeśli konto istnieje, na podany adres e-mail zostanie wysłany link do resetowania hasła.",
-    "success"
-  );
-});
 
 logoutBtn.addEventListener("click", async () => {
   await supabaseClient.auth.signOut();
+  showAuth();
+});
+
+deleteAccountBtn.addEventListener("click", async () => {
+  if (!currentUser) return;
+
+  const confirmed = confirm(
+    "Czy na pewno chcesz usunąć konto? W tej wersji zostaną usunięte Twoje zadania i nastąpi wylogowanie. Pełne usunięcie konta z Supabase Auth wymaga funkcji serverless, którą można dodać jako kolejny etap projektu."
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabaseClient
+    .from("tasks")
+    .delete()
+    .eq("user_id", currentUser.id);
+
+  if (error) {
+    alert("Błąd usuwania danych konta: " + error.message);
+    return;
+  }
+
+  await supabaseClient.auth.signOut();
+  alert("Dane konta zostały usunięte z aplikacji. Użytkownik został wylogowany.");
   showAuth();
 });
 
@@ -214,6 +283,7 @@ async function loadTasks() {
   const { data, error } = await supabaseClient
     .from("tasks")
     .select("*")
+    .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -313,7 +383,8 @@ taskList.addEventListener("click", async (event) => {
     const { error } = await supabaseClient
       .from("tasks")
       .update({ is_done: isDone })
-      .eq("id", taskId);
+      .eq("id", taskId)
+      .eq("user_id", currentUser.id);
 
     if (error) {
       alert("Błąd aktualizacji zadania: " + error.message);
@@ -332,7 +403,8 @@ taskList.addEventListener("click", async (event) => {
     const { error } = await supabaseClient
       .from("tasks")
       .delete()
-      .eq("id", taskId);
+      .eq("id", taskId)
+      .eq("user_id", currentUser.id);
 
     if (error) {
       alert("Błąd usuwania zadania: " + error.message);
