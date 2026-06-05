@@ -11,6 +11,7 @@ const passwordInput = document.getElementById("password");
 
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
+const resetPasswordBtn = document.getElementById("resetPasswordBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
 const authMessage = document.getElementById("authMessage");
@@ -48,23 +49,53 @@ function isStrongPassword(password) {
   return minLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 }
 
-function validateAuthForm() {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
+function getEmailAndPassword() {
+  return {
+    email: emailInput.value.trim(),
+    password: passwordInput.value.trim()
+  };
+}
 
-  if (!email || !password) {
-    setMessage("Wpisz e-mail i hasło.", "error");
-    return null;
+function validateEmailOnly(email) {
+  if (!email) {
+    setMessage("Wpisz adres e-mail.", "error");
+    return false;
   }
 
   if (!isValidEmail(email)) {
     setMessage("Wpisz poprawny adres e-mail, np. test@test.pl.", "error");
+    return false;
+  }
+
+  return true;
+}
+
+function validateLoginForm() {
+  const { email, password } = getEmailAndPassword();
+
+  if (!validateEmailOnly(email)) return null;
+
+  if (!password) {
+    setMessage("Wpisz hasło.", "error");
+    return null;
+  }
+
+  return { email, password };
+}
+
+function validateRegisterForm() {
+  const { email, password } = getEmailAndPassword();
+
+  if (!validateEmailOnly(email)) return null;
+
+  if (!password) {
+    setMessage("Wpisz hasło.", "error");
     return null;
   }
 
   if (!isStrongPassword(password)) {
     setMessage(
-      "Hasło jest zbyt słabe. Powinno mieć minimum 8 znaków, małą literę, wielką literę, cyfrę i znak specjalny.",
+      "Hasło jest zbyt słabe. Przy rejestracji hasło musi mieć minimum 8 znaków, małą literę, wielką literę, cyfrę i znak specjalny.",
       "error"
     );
     return null;
@@ -101,10 +132,10 @@ function showAuth() {
 }
 
 registerBtn.addEventListener("click", async () => {
-  const form = validateAuthForm();
+  const form = validateRegisterForm();
   if (!form) return;
 
-  const { data, error } = await supabaseClient.auth.signUp({
+  const { error } = await supabaseClient.auth.signUp({
     email: form.email,
     password: form.password
   });
@@ -123,7 +154,7 @@ registerBtn.addEventListener("click", async () => {
 });
 
 loginBtn.addEventListener("click", async () => {
-  const form = validateAuthForm();
+  const form = validateLoginForm();
   if (!form) return;
 
   const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -140,6 +171,26 @@ loginBtn.addEventListener("click", async () => {
   }
 
   await showDashboard(data.user);
+});
+
+resetPasswordBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+
+  if (!validateEmailOnly(email)) return;
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
+  });
+
+  if (error) {
+    setMessage("Nie udało się wysłać wiadomości resetującej hasło: " + error.message, "error");
+    return;
+  }
+
+  setMessage(
+    "Jeśli konto istnieje, na podany adres e-mail zostanie wysłany link do resetowania hasła.",
+    "success"
+  );
 });
 
 logoutBtn.addEventListener("click", async () => {
