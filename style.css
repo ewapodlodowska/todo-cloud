@@ -475,3 +475,53 @@ button.danger:hover {
 .file-label input {
   display: none;
 }
+.attachment-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.attachment-name {
+  color: #334155;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.delete-attachment {
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.delete-attachment:hover {
+  background: #fecaca;
+  box-shadow: none;
+  transform: none;
+}
+
+@media (max-width: 720px) {
+  .attachment-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
