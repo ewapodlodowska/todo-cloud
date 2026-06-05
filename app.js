@@ -32,10 +32,6 @@ const addTaskBtn = document.getElementById("addTaskBtn");
 const taskList = document.getElementById("taskList");
 const taskCounter = document.getElementById("taskCounter");
 
-const fileInput = document.getElementById("fileInput");
-const uploadBtn = document.getElementById("uploadBtn");
-const fileInfo = document.getElementById("fileInfo");
-
 let currentUser = null;
 let currentTasks = [];
 
@@ -234,7 +230,6 @@ function showAuth() {
 
   taskList.innerHTML = "";
   taskCounter.textContent = "0 zadań";
-  fileInfo.textContent = "";
   showLoginTab();
 }
 
@@ -311,11 +306,26 @@ function renderTasks() {
 
       const safeTitle = escapeHtml(task.title);
 
+      const attachmentHtml = task.file_url
+        ? `<a class="attachment-link" href="${task.file_url}" target="_blank" rel="noopener noreferrer">Otwórz załącznik</a>`
+        : `<span class="no-attachment">Brak załącznika</span>`;
+
       li.innerHTML = `
-        <label>
-          <input type="checkbox" ${task.is_done ? "checked" : ""} data-id="${task.id}" />
-          <span>${safeTitle}</span>
-        </label>
+        <div class="task-main">
+          <label>
+            <input type="checkbox" ${task.is_done ? "checked" : ""} data-id="${task.id}" />
+            <span>${safeTitle}</span>
+          </label>
+
+          <div class="task-attachment">
+            ${attachmentHtml}
+            <label class="file-label">
+              Dodaj załącznik
+              <input type="file" class="task-file-input" data-id="${task.id}" />
+            </label>
+          </div>
+        </div>
+
         <button class="delete" data-id="${task.id}">Usuń</button>
       `;
 
@@ -413,25 +423,25 @@ taskList.addEventListener("click", async (event) => {
 
     await loadTasks();
   }
-});
-
-uploadBtn.addEventListener("click", async () => {
-  const file = fileInput.files[0];
+}
+                         taskList.addEventListener("change", async (event) => {
+  if (!event.target.classList.contains("task-file-input")) return;
 
   if (!currentUser) {
     alert("Najpierw się zaloguj.");
     return;
   }
 
-  if (!file) {
-    alert("Najpierw wybierz plik.");
-    return;
-  }
+  const taskId = event.target.dataset.id;
+  const file = event.target.files[0];
+
+  if (!file) return;
 
   const maxFileSize = 2 * 1024 * 1024;
 
   if (file.size > maxFileSize) {
     alert("Plik jest za duży. Na potrzeby projektu wybierz plik do 2 MB.");
+    event.target.value = "";
     return;
   }
 
@@ -439,17 +449,14 @@ uploadBtn.addEventListener("click", async () => {
     .replaceAll(" ", "_")
     .replace(/[^a-zA-Z0-9._-]/g, "");
 
-  const filePath = `${currentUser.id}/${Date.now()}_${safeFileName}`;
+  const filePath = `${currentUser.id}/${taskId}/${Date.now()}_${safeFileName}`;
 
-  fileInfo.textContent = "Trwa przesyłanie pliku do chmury...";
-
-  const { error } = await supabaseClient.storage
+  const { error: uploadError } = await supabaseClient.storage
     .from("task-files")
     .upload(filePath, file);
 
-  if (error) {
-    fileInfo.textContent = "";
-    alert("Błąd przesyłania pliku: " + error.message);
+  if (uploadError) {
+    alert("Błąd przesyłania pliku: " + uploadError.message);
     return;
   }
 
@@ -457,18 +464,16 @@ uploadBtn.addEventListener("click", async () => {
     .from("task-files")
     .getPublicUrl(filePath);
 
-  fileInfo.innerHTML = `
-    Plik został zapisany w chmurze:
-    <a href="${data.publicUrl}" target="_blank" rel="noopener noreferrer">otwórz plik</a>
-  `;
+  const { error: updateError } = await supabaseClient
+    .from("tasks")
+    .update({ file_url: data.publicUrl })
+    .eq("id", taskId)
+    .eq("user_id", currentUser.id);
 
-  fileInput.value = "";
+  if (updateError) {
+    alert("Plik został przesłany, ale nie udało się przypisać go do zadania: " + updateError.message);
+    return;
+  }
+
+  await loadTasks();
 });
-
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-checkExistingSession();
