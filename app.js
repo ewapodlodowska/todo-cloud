@@ -288,7 +288,7 @@ async function checkExistingSession() {
 async function loadStats() {
   if (!currentUser) return;
 
-  const { data, error } = await supabaseClient.functions.invoke("get-task-stats", {
+  const { data, error } = await supabaseClient.functions.invoke("bright-service", {
     body: {}
   });
 
