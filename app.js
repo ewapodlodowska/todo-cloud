@@ -555,6 +555,74 @@ taskList.addEventListener("click", async (event) => {
     await loadTasks();
   }
 });
+taskList.addEventListener("change", async (event) => {
+  if (!event.target.classList.contains("task-file-input")) {
+    return;
+  }
+
+  if (!currentUser) {
+    alert("Najpierw się zaloguj.");
+    return;
+  }
+
+  const taskId = event.target.dataset.id;
+  const file = event.target.files[0];
+
+  if (!taskId) {
+    alert("Nie znaleziono identyfikatora zadania.");
+    return;
+  }
+
+  if (!file) {
+    alert("Nie wybrano pliku.");
+    return;
+  }
+
+  const maxFileSize = 2 * 1024 * 1024;
+
+  if (file.size > maxFileSize) {
+    alert("Plik jest za duży. Na potrzeby projektu wybierz plik do 2 MB.");
+    event.target.value = "";
+    return;
+  }
+
+  const safeFileName = file.name
+    .replaceAll(" ", "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
+
+  const filePath = `${currentUser.id}/${taskId}/${Date.now()}_${safeFileName}`;
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from("task-files")
+    .upload(filePath, file);
+
+  if (uploadError) {
+    alert("Błąd przesyłania pliku do Storage: " + uploadError.message);
+    return;
+  }
+
+  const { data } = supabaseClient.storage
+    .from("task-files")
+    .getPublicUrl(filePath);
+
+  const { error: insertError } = await supabaseClient
+    .from("task_attachments")
+    .insert({
+      task_id: taskId,
+      user_id: currentUser.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_url: data.publicUrl
+    });
+
+  if (insertError) {
+    alert("Plik został przesłany, ale nie udało się zapisać informacji o załączniku: " + insertError.message);
+    return;
+  }
+
+  event.target.value = "";
+  await loadTasks();
+});
 
 function escapeHtml(text) {
   const div = document.createElement("div");
