@@ -288,17 +288,26 @@ async function checkExistingSession() {
 async function loadStats() {
   if (!currentUser) return;
 
-  const { data, error } = await supabaseClient.functions.invoke("get-task-stats");
+  const { data, error } = await supabaseClient.functions.invoke("get-task-stats", {
+    body: {}
+  });
 
   if (error) {
+    console.error("Błąd Edge Function:", error);
     alert("Błąd pobierania statystyk: " + error.message);
     return;
   }
 
-  totalTasksStat.textContent = data.totalTasks;
-  completedTasksStat.textContent = data.completedTasks;
-  activeTasksStat.textContent = data.activeTasks;
-  attachmentsStat.textContent = data.totalAttachments;
+  if (data?.error) {
+    console.error("Błąd zwrócony przez funkcję:", data.error);
+    alert("Błąd statystyk: " + data.error);
+    return;
+  }
+
+  totalTasksStat.textContent = data.totalTasks ?? 0;
+  completedTasksStat.textContent = data.completedTasks ?? 0;
+  activeTasksStat.textContent = data.activeTasks ?? 0;
+  attachmentsStat.textContent = data.totalAttachments ?? 0;
 }
 
 async function loadTasks() {
